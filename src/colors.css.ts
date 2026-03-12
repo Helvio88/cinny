@@ -347,7 +347,7 @@ export const butterTheme = createTheme(ThemeContract, {
 });
 
 export const moonlightTheme = createTheme(ThemeContract, {
-  background: 'linear-gradient(to bottom right, #000546, #000)',
+  background: 'linear-gradient(to top right, #000546, #000)',
 
   Background: {
     Container: '#000000',
