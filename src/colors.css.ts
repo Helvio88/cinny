@@ -403,8 +403,8 @@ export const moonlightTheme = createTheme(ThemeContract, {
 
   Success: {
     Main: '#00FF95',
-    MainHover: '#1AFFA0',
-    MainActive: '#33FFAA',
+    MainHover: '#00E586',
+    MainActive: '#00CC77',
     MainLine: '#4DFFB5',
     OnMain: '#0B2E22',
 
@@ -430,10 +430,10 @@ export const moonlightTheme = createTheme(ThemeContract, {
   },
 
   Critical: {
-    Main: '#CB0000',
+    Main: '#FF0000',
     MainHover: '#E50000',
-    MainActive: '#FF0000',
-    MainLine: '#FF1A1A',
+    MainActive: '#CC0000',
+    MainLine: '#FF4D4D',
     OnMain: '#ffffff',
 
     Container: '#4D0000',
