@@ -354,7 +354,7 @@ export const moonlightTheme = createTheme(ThemeContract, {
     ContainerHover: '#01032B',
     ContainerActive: '#020546',
     ContainerLine: '#030977',
-    OnContainer: '#FFFFFF',
+    OnContainer: '#EAEBFF',
   },
 
   Surface: {
@@ -362,7 +362,7 @@ export const moonlightTheme = createTheme(ThemeContract, {
     ContainerHover: '#020546',
     ContainerActive: '#03075E',
     ContainerLine: '#030977',
-    OnContainer: '#FFFFFF',
+    OnContainer: '#EAEBFF',
   },
 
   SurfaceVariant: {
@@ -370,7 +370,7 @@ export const moonlightTheme = createTheme(ThemeContract, {
     ContainerHover: '#03075E',
     ContainerActive: '#030977',
     ContainerLine: '#030977',
-    OnContainer: '#F2F2F2',
+    OnContainer: '#EAEBFF',
   },
 
   Primary: {
