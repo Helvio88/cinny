@@ -15,6 +15,7 @@ import {
   Scroll,
   Spinner,
   Text,
+  TextArea,
   as,
   color,
   config,
@@ -31,7 +32,7 @@ import React, {
 import FocusTrap from 'focus-trap-react';
 import { useAtomValue } from 'jotai';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { IContent, MatrixEvent, Room } from 'matrix-js-sdk';
+import { IContent, MatrixClient, MatrixEvent, MsgType, Room } from 'matrix-js-sdk';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useAsyncCallback, AsyncStatus } from '../../../hooks/useAsyncCallback';
 import { useAlive } from '../../../hooks/useAlive';
@@ -55,6 +56,7 @@ import {
   trimReplyFromBody,
   trimReplyFromFormattedBody,
 } from '../../../utils/room';
+import { getCanonicalAliasOrRoomId, guessDmRoomUserId } from '../../../utils/matrix';
 import { nameInitials } from '../../../utils/common';
 import { factoryRoomIdByActivity } from '../../../utils/sort';
 import { stopPropagation } from '../../../utils/keyboard';
@@ -127,6 +129,16 @@ const canSendEventToRoom = (room: Room, userId: string, eventType: string): bool
   return getRoomPermissionsAPI(creators, powerLevels).event(eventType, userId);
 };
 
+const getForwardRecipientId = (
+  mx: MatrixClient,
+  target: Room,
+  dm: boolean,
+  myUserId: string
+): string => {
+  if (dm) return guessDmRoomUserId(target, myUserId);
+  return getCanonicalAliasOrRoomId(mx, target.roomId);
+};
+
 type ForwardFailure = {
   roomId: string;
   name: string;
@@ -145,6 +157,7 @@ export const MessageForwardItem = as<
   const useAuthentication = useMediaAuthentication();
   const alive = useAlive();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messageRef = useRef<HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -169,8 +182,16 @@ export const MessageForwardItem = as<
   }, [prepared, rooms, directs, getRoom, mx]);
 
   const getRoomNameStr: SearchItemStrGetter<string> = useCallback(
-    (roomId) => getRoom(roomId)?.name ?? roomId,
-    [getRoom]
+    (roomId) => {
+      const target = getRoom(roomId);
+      if (!target) return roomId;
+      const dm = mDirects.has(roomId);
+      const recipientId = getForwardRecipientId(mx, target, dm, mx.getSafeUserId());
+      if (dm) return [target.name, recipientId];
+      if (recipientId !== target.roomId) return [target.name, recipientId, target.roomId];
+      return [target.name, target.roomId];
+    },
+    [getRoom, mDirects, mx]
   );
 
   const [searchResult, searchRoom, resetSearch] = useAsyncSearch(
@@ -186,23 +207,33 @@ export const MessageForwardItem = as<
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 40,
+    estimateSize: () => 56,
     overscan: 5,
   });
   const vItems = virtualizer.getVirtualItems();
 
-  const [forwardState, forwardMessage] = useAsyncCallback<ForwardFailure[], Error, [string[]]>(
+  const [forwardState, forwardMessage] = useAsyncCallback<
+    ForwardFailure[],
+    Error,
+    [string[], string]
+  >(
     useCallback(
-      async (roomIds) => {
+      async (roomIds, extraText) => {
         const eventToSend = getForwardableEvent(room, mEvent);
         if (!eventToSend.ok) {
           throw new Error(eventToSend.error);
         }
 
         const results = await Promise.allSettled(
-          roomIds.map((roomId) =>
-            mx.sendEvent(roomId, eventToSend.eventType as any, eventToSend.content)
-          )
+          roomIds.map(async (roomId) => {
+            if (extraText) {
+              await mx.sendMessage(roomId, {
+                msgtype: MsgType.Text,
+                body: extraText,
+              } as any);
+            }
+            return mx.sendEvent(roomId, eventToSend.eventType as any, eventToSend.content);
+          })
         );
 
         return results.flatMap((result, index) => {
@@ -223,6 +254,7 @@ export const MessageForwardItem = as<
   const handleClose = () => {
     setOpen(false);
     setSelected([]);
+    if (messageRef.current) messageRef.current.value = '';
     resetSearch();
     onClose?.();
   };
@@ -246,7 +278,7 @@ export const MessageForwardItem = as<
 
   const handleForward = () => {
     if (selected.length === 0 || forwarding || !prepared.ok) return;
-    forwardMessage(selected)
+    forwardMessage(selected, messageRef.current?.value.trim() ?? '')
       .then((failures) => {
         if (!alive()) return;
         if (failures.length === 0) {
@@ -316,9 +348,18 @@ export const MessageForwardItem = as<
                   {prepared.ok && (
                     <>
                       <Box style={{ paddingRight: config.space.S400 }} direction="Column" gap="200">
-                        <Text priority="400">
-                          Send this message to one or more rooms or direct messages.
-                        </Text>
+                        <Box direction="Column" gap="100">
+                          <Text size="L400">Message</Text>
+                          <TextArea
+                            ref={messageRef}
+                            name="messageInput"
+                            variant="Background"
+                            size="500"
+                            rows={2}
+                            resize="None"
+                            disabled={forwarding}
+                          />
+                        </Box>
                         <Input
                           onChange={handleSearchChange}
                           before={<Icon size="200" src={Icons.Search} />}
@@ -361,6 +402,12 @@ export const MessageForwardItem = as<
                               if (!target) return null;
                               const selectedItem = selected.includes(roomId);
                               const dm = mDirects.has(roomId);
+                              const recipientId = getForwardRecipientId(
+                                mx,
+                                target,
+                                dm,
+                                mx.getSafeUserId()
+                              );
 
                               return (
                                 <VirtualTile
@@ -406,11 +453,16 @@ export const MessageForwardItem = as<
                                     }
                                     after={selectedItem && <Icon size="200" src={Icons.Check} />}
                                   >
-                                    <Box grow="Yes">
+                                    <Box grow="Yes" direction="Column">
                                       <Text truncate size="T400">
                                         {queryHighlightRegex
                                           ? highlightText(queryHighlightRegex, [target.name])
                                           : target.name}
+                                      </Text>
+                                      <Text truncate size="T200" priority="300">
+                                        {queryHighlightRegex
+                                          ? highlightText(queryHighlightRegex, [recipientId])
+                                          : recipientId}
                                       </Text>
                                     </Box>
                                   </MenuItem>
