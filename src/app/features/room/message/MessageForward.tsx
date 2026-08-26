@@ -348,18 +348,6 @@ export const MessageForwardItem = as<
                   {prepared.ok && (
                     <>
                       <Box style={{ paddingRight: config.space.S400 }} direction="Column" gap="200">
-                        <Box direction="Column" gap="100">
-                          <Text size="L400">Message</Text>
-                          <TextArea
-                            ref={messageRef}
-                            name="messageInput"
-                            variant="Background"
-                            size="500"
-                            rows={2}
-                            resize="None"
-                            disabled={forwarding}
-                          />
-                        </Box>
                         <Input
                           onChange={handleSearchChange}
                           before={<Icon size="200" src={Icons.Search} />}
@@ -492,6 +480,18 @@ export const MessageForwardItem = as<
                             .
                           </Text>
                         )}
+                        <Box direction="Column" gap="100">
+                          <Text size="L400">Message</Text>
+                          <TextArea
+                            ref={messageRef}
+                            name="messageInput"
+                            variant="Background"
+                            size="500"
+                            rows={2}
+                            resize="None"
+                            disabled={forwarding}
+                          />
+                        </Box>
                         <Button
                           variant="Primary"
                           onClick={handleForward}
