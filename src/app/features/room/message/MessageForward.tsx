@@ -422,6 +422,11 @@ export const MessageForwardItem = as<
                                     variant={selectedItem ? 'Success' : 'Surface'}
                                     size="400"
                                     radii="400"
+                                    style={{
+                                      height: 'auto',
+                                      paddingTop: config.space.S100,
+                                      paddingBottom: config.space.S100,
+                                    }}
                                     disabled={forwarding}
                                     aria-pressed={selectedItem}
                                     before={
